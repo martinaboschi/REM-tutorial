@@ -1,6 +1,6 @@
 ---
 title: "Relational Event Model 2.0"
-author: "Edoardo Filippi-Mazzola"
+author: "Bianchi, Boschi,Filippi-Mazzola, Juozaitiené, Wit"
 subtitle: "REMs with millions of events"
 date: "2024-06-24"
 output: pdf_document

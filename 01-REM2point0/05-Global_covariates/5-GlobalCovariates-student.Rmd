@@ -28,7 +28,8 @@ n<-nrow(mnf.raw)
 Consider the data and make a histogram of the time of day and day of the week. Draw some conclusions whether both terms are important to be included for an analysis of the email interactions in this context. 
 
 ```{r}
-#Use the function hist with an appropriate number of breaks to visualize when interactions tend to take place
+#Use the function hist with an appropriate number of breaks to visualize when interactions
+#tend to take place
 ```
 
 As can be seen from both graphs, information about the time of day and day of the week clearly affect the intensity of the interactions. For this reason, it is important that both terms are included in the relational event model. 
@@ -63,7 +64,9 @@ On the shifted process, sample for each (shifted) events a non-event at the same
 ```{r}
 resample <- function(x, ...) x[sample.int(length(x), ...)]
 event.ids<-mnf.raw$s+(mnf.raw$r-1)*p
-non.event.ids<-apply(cbind(tms.shift,event.ids),1, function(x,tau){resample(setdiff((1:length(tau))[(x[1]>tau)&(x[1]<(tau+T))],c(NA,x[2])))[1]},tau=tau)
+non.event.ids<-apply(cbind(tms.shift,event.ids),1,
+function(x,tau){resample(setdiff((1:length(tau))[(x[1]>tau)&(x[1]<(tau+T))],c(NA,x[2])))[1]},
+tau=tau)
 ```
 
 ### Exercise 1.5. Create covariates
