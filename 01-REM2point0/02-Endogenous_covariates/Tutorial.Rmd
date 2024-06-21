@@ -130,7 +130,7 @@ summary(gam(y ~ receiver.teacher.diff - 1,
 
 \emph{Once we identified events occurred in the time-window of interest, we can count the ones satisfying the condition of interest. For example, in this case, given $(s,r,t)$, we aim at finding all the previous events with receiver equal to $r$.}
 
-$$ x_{r}^{\text{in-degree}}(t) = \sum_{ s \in \mathcal{S} } \sum_{t_i < t} {1} \{ s_i = s, r_i=r \}  $$
+$$ x_{r}^{\text{in-degree}}(t) =  \sum_{t_i < t} {1} \{ r_i=r \}  $$
 
 \emph{Let us inspect visually the first occurred events}:
 
@@ -336,7 +336,9 @@ summary(gam(y ~ endPop_diff + rec_diff + cyc_diff - 1, data=dat.gam,
 
 ### 2.2.    Transitive Closure
 
-\colorbox{darkseagreen}{Demo 3}: Write a function \texttt{transitive\_closure} that, given the case-control dataset and the ordinal position, computes an indicator for  \textcolor{mauvetaupe}{Transitive Closure} in the \textcolor{mauvetaupe}{short and long term}. The function should have a parameter \texttt{alpha} determining short and long term and an optional parameter \texttt{ev=TRUE}. The \textcolor{mauvetaupe}{event of interest} is represented (in this case) by the (second-leg) of the triangle $a \rightarrow r$.
+\colorbox{darkseagreen}{Demo 3}: 
+
+\colorbox{darkseagreen}{D3.1}: Write a function \texttt{transitive\_closure} that, given the case-control dataset and the ordinal position, computes an indicator for  \textcolor{mauvetaupe}{Transitive Closure} in the \textcolor{mauvetaupe}{short and long term}. The function should have a parameter \texttt{alpha} determining short and long term and an optional parameter \texttt{ev=TRUE}. The \textcolor{mauvetaupe}{event of interest} is represented (in this case) by the (second-leg) of the triangle $a \rightarrow r$.
 
 ```{r}
 transitive_closure_slt <- function(dat.gam, k, alpha, ev=TRUE) {
@@ -417,11 +419,30 @@ transitive_closure_slt <- function(dat.gam, k, alpha, ev=TRUE) {
       }
     }
   }
-  # Return the reciprocity and cyclic closure indicators
+  
   return(c(trs_rec, trs_long, trs_id))
 }
 ```
 
+\colorbox{darkseagreen}{D3.2}:  Apply the function \texttt{transitive\_closure} to `Class` events and sampled non-events, then compute the difference between obtained indicators for events and non-events (in the short and long term). Add them to the model in \colorbox{darkseagreen}{D2.4}.
+
+```{r}
+events <- t(sapply(1:nrow(dat.gam), 
+                 function(x) transitive_closure_slt(dat.gam, x, alpha = 10, ev=TRUE)))
+non_events <- t(sapply(1:nrow(dat.gam), 
+                function(x) transitive_closure_slt(dat.gam, x, alpha = 10, ev=FALSE)))
+
+dat.gam <- cbind(dat.gam, 
+                 trs_rec1 = events[,3],
+                 trs_rec2 = non_events[,3])
+dat.gam$trs_rec = dat.gam$trs_rec1 - dat.gam$trs_rec2
+```
+
+```{r}
+summary(gam(y ~ endPop_diff + rec_diff + cyc_diff + 
+            trs_rec - 1, data=dat.gam, 
+            family="binomial"))
+```
 
 ## 3.   Time in REMs Network Statistics: Short VS Long-Term Network Statistics
 
@@ -583,12 +604,92 @@ colnames(frame_1) <- c("rec_short",
 frame_1
 ```
 
+\colorbox{pastelyellow}{E1.2}: Apply `transitive_closure_slt` to the event sequence with the found value for `alpha`. 
+
 ```{r}
 frame_2 <- t(sapply(1:20, function(x) transitive_closure_slt(dat.gam = rem_dat, k=x,
                                       alpha = 3)))
 colnames(frame_2) <- c("trs_short", "trs_long", "trs_id")
 frame_2
 ```
+
+\colorbox{pastelyellow}{E1.3}: Plot the obtained structures.  
+
+```{r, echo=FALSE}
+knitr::include_graphics("02-Images/solution-exercise1.pdf")
+```
+
+\colorbox{pastelyellow}{E1.4}: Create the case-control dataset (namely, sample a non-event for each event, compute the covariates for the non-events and then the difference between the covariates of the events and those of the non-events)
+
+```{r}
+combos <- expand.grid(c("A", "B", "C"), c("A", "B", "C"))
+pairs <- subset(combos, Var1 != Var2)
+set.seed(2)
+non_rem_dat <- pairs[sample(1:nrow(pairs), 20, replace=TRUE), ]
+non_rem_dat <- cbind(non_rem_dat,
+                     t(sapply(1:20, function(x) 
+                       rec_cyc_slt(dat.gam = non_rem_dat, 
+                                   k=x, alpha = 3))),
+                     t(sapply(1:20, function(x) 
+                       transitive_closure_slt(dat.gam = rem_dat, 
+                                              k=x, alpha = 3))))
+colnames(non_rem_dat) <- c("non.sender", 
+                           "non.receiver",
+                           "non.rec_short", 
+                           "non.rec_long",
+                           "non.rec_id",
+                           "non.cyc_short",
+                           "non.cyc_long",
+                           "non.cyc_id",
+                           "non.trs_short", 
+                           "non.trs_long", 
+                           "non.trs_id")
+```
+
+```{r}
+rem_dat <- cbind(rem_dat, frame_1)
+rem_dat <- cbind(rem_dat, frame_2)
+rem_dat <- cbind(rem_dat, non_rem_dat)
+rem_dat <- cbind(rem_dat, 1)
+colnames(rem_dat)[ncol(rem_dat)] <- "y"
+rem_dat[,c("diff.rec_short", 
+           "diff.rec_long",
+           "diff.rec_id",
+           "diff.cyc_short",
+           "diff.cyc_long",
+           "diff.cyc_id",
+           "diff.trs_short",
+           "diff.trs_long", 
+           "diff.trs_id")] <- 
+rem_dat[,c("rec_short", 
+           "rec_long",
+           "rec_id",
+           "cyc_short",
+           "cyc_long",
+           "cyc_id",
+           "trs_short",
+           "trs_long", 
+           "trs_id")] -
+  rem_dat[,c("non.rec_short", 
+           "non.rec_long",
+           "non.rec_id",
+           "non.cyc_short",
+           "non.cyc_long",
+           "non.cyc_id",
+           "non.trs_short",
+           "non.trs_long", 
+           "non.trs_id")]
+```
+
+\colorbox{pastelyellow}{E1.5}: Fit a GAM exploring the effect of reciprocity on the long and short term. 
+
+```{r}
+summary(gam(y ~ diff.rec_short + diff.rec_long - 1,
+            data=rem_dat, 
+            family="binomial"))
+```
+
+
 
 
 \colorbox{pastelpurple}{Supplementary 1}: 
@@ -647,7 +748,6 @@ frame_3 <- t(sapply(1:20, function(x) repetition_slt(dat.gam = rem_dat, k=x,
 colnames(frame_3) <- c("rep_short", "rep_long", "rep_id")
 frame_3
 ```
-
 ## 4.   Time to work on real data... Inspecting a financial market!
 
 ```{r, echo=FALSE}
@@ -690,10 +790,9 @@ $$ x^{\mathbb{W}, \text{long}, \ldots}_{sr}(t; \alpha, \delta) =
 
 \emph{REMs can be estimated via generalized additive models (GAMs). 
 
-We will start with the baseline model (M) and will continue adding more refined network statistics. More specifically,}
+We will consider a baseline model (M) and will add more refined network statistics. More specifically,}
 
 - \emph{M includes statistics computed over the whole observation period;}
-- \emph{M\_SLT includes statistics computed over short and long time windows;}
 - \emph{M\_TW include *time-weighted* network statistics}.
 
 \colorbox{darkseagreen}{Demo 5}: 
@@ -712,11 +811,11 @@ load("01-Data/01-Inputs/input03.RData")
 
 \colorbox{darkseagreen}{D5.3}: Fit the \textcolor{mauvetaupe}{baseline model}, including nodal, diadic, and extra-diadic statistics. 
 
-\emph{The baseline model includes nodal, diadic, and extra-diadic statistics evaluated during the whole period of observation, i.e, during the trading year 2006.
+\emph{The baseline model includes nodal, diadic, and extra-diadic statistics evaluated during the whole period of observation, i.e, during the trading year 2006.}
 
-Nodal endogenous attributes like _RecNetBal_ are also included. This statistics refer to the difference between the lent and the borrowed amount of a bank. The statistics _EdBalDif_ is similarly defined. It refers to the same difference but evaluated across dyads, i.e. across the pairs of lenders (senders) and borrowers (receivers).
+\emph{Nodal endogenous attributes like} _RecNetBal_ \emph{are also included. This statistics refer to the difference between the lent and the borrowed amount of a bank. The statistics} _EdBalDif_ \emph{is similarly defined. It refers to the same difference but evaluated across dyads, i.e. across the pairs of lenders (senders) and borrowers (receivers).}
 
-Please note that nodal statistics are referred to receivers (Rec...) rather than senders. This is because the NCCS is sender-based to account for lenders' heterogeneity.}
+\emph{Please note that nodal statistics are referred to receivers (Rec...) rather than senders. This is because the NCCS is sender-based to account for lenders' heterogeneity.}
 
 ```{r}
 M = gam(one ~ ## OUT-DEGREE + OUT-ACTIVITY + IN-DEGREE + IN-ACTIVITY
@@ -739,68 +838,21 @@ M = gam(one ~ ## OUT-DEGREE + OUT-ACTIVITY + IN-DEGREE + IN-ACTIVITY
 ```
 
 ```{r}
-# save(M, file="01-Data/02-Gam-Fits/baseline-model.RData")
+save(M, file="01-Data/02-Gam-Fits/baseline-model.RData")
 summary(M)
 ```
 
-#### 4.3.2. Short/Long Term Network Statistics
+-   \emph{Positive and highly significant in-degree (RecInDeg): This suggests that certain actors within your network are consistently receiving a high volume of actions or interactions from others. They are the targets of activity. This could indicate popularity or central role within the network.}
+-   \emph{Positive and highly significant in-intensity (RecNRInAct): This means that the actions directed towards these high in-degree actors are not only frequent but also of high intensity or importance. This could suggest strong credit relationships between banks.}
+-   \emph{Negative and weakly significant assortativity (by degree and by intensity) (SdrOutDeg\_RecInDeg and SdrNROutAct\_RecNRInAct): Assortativity by degree indicates that high-degree actors (those involved in many interactions) tend to connect with low-degree actors (those involved in fewer interactions), and viceversa. Assortativity by intensity indicates that actors involved in high-intensity interactions tend to connect with actors involved in low-intensity interactions. Overall, the negative assortativity suggests a pattern of heterogeneity in the network. There's not a strong tendency for like to attract like in terms of interaction frequency or intensity. The weak significance implies this pattern might not be a dominant feature of your network.}
+-   \emph{Slightly significant positive transitivity (EdTran): This indicates a mild tendency for triangles to form in your network. This suggests some degree of clustering or community formation within your network.}
+-   \emph{Negative and highly significant recency parameter (RecLastTime): When the recency parameter is negative, it means that if an event has recently occurred between two actors, it is less likely that the same type of event will happen again immediately afterward. Relatedly, as time passes since the last event, the likelihood of a similar event occurring between those same actors gradually increases.}
+-   \emph{Positive and highly significant net balance parameter: The RecNetBal statistic calculates the difference between a bank's total lending amount (money it lends to other banks) and its total borrowing amount (money it borrows from other banks). A positive net balance means a bank has lent out more money than it has borrowed. In other words, it is a net creditor in the interbank lending network.}
+-   \emph{In summary, the network appears to have key players (high in-degree) who are the targets of frequent and important actions. While there is some clustering, the overall network structure is heterogeneous, with high-degree and high-intensity actors often connecting with their lower-degree and lower-intensity counterparts.}
 
-\colorbox{darkseagreen}{Demo 5.4}:  Incorporate in the model \textcolor{mauvetaupe}{short-term network statistics}.
+#### 4.3.2. Time-Weighted Network Statistics
 
-\emph{Computing network statistics over both short and long temporal frames is essential for gaining a comprehensive understanding of network behavior and dynamics.}
-
--   __Short temporal frames__:
--   \emph{Capturing temporary behavior: Short frames allow you to capture rapid fluctuations and short-lived events in the network.}
--   __Long Temporal Frames__:
--   _Identifying trends and seasonality_: \emph{Long frames reveal longer-term patterns and trends in network traffic, such as:}
--   _Long-term growth or decline_: \emph{Understanding overall trends in network usage.}
-
-\emph{In the context of the interbank market, analyzing short-term statistics can reveal how banks react to immediate events (e.g., changes in interest rates, economic news).  Long-term statistics might show how relationships between banks evolve over time, or how the market responds to broader economic cycles.}
-
-\emph{To understand how banks interact in the short term, we focus on specific time periods, or windows. We have chosen a window of 45 days for this analysis. Why 45 days? This is roughly the average amount of time a bank keeps funds borrowed from other banks before needing to repay or adjust them.}
-
-```{r}
-M_SLT = gam(one ~  
-              ## OUT-DEGREE + OUT-ACTIVITY
-              RecOutDeg + ShortRecOutDeg + 
-              RecNROutAct+ ShortRecNROutAct + 
-              ## IN-DEGREE + IN-ACTIVITY
-              RecInDeg + ShortRecInDeg + 
-              RecNRInAct+ ShortRecNRInAct + 
-              ## NODE BALANCE
-              RecNetBal +
-              ## NODE TIME FROM LAST EVENT
-              RecLastTime +
-              ## ASSORTATIVITY BY DEGREE AND BY INTENSITY
-              SdrOutDeg_RecInDeg + SdrShortOutDeg_ShortRecInDeg + 
-              SdrNROutAct_RecNRInAct + SdrShortNROutAct_ShortRecNRInAct +
-              ## REPETITION
-              EdTrt + ShortEdTrt +
-              ## RECIPROCITY
-              EdRec + ShortEdRec + 
-              ## DYADIC BALANCE
-              EdBalDif + 
-              ## TRANSITIVE CLOSURE
-              EdTran + ShortEdTran + 
-              ## CYCLIC CLOSURE
-              EdClos + ShortEdClos +
-              # ## SHARED BORROWERS
-              EdShrBors + ShortEdShrBors + 
-              ## SHARED LENDERS
-              EdShrLens + ShortEdShrLens -1,
-
-            family = "binomial", 
-            data = dat.gam)
-```
-
-```{r}
-# save(M_SLT, file="01-Data/02-Gam-Fits/short-long-term-model.RData")
-summary(M_SLT)
-```
-
-#### 4.3.3. Time-Weighted Network Statistics
-
-\colorbox{darkseagreen}{Demo 5.5}:  Incorporate in the model \textcolor{mauvetaupe}{time-weighted network statistics}.
+\colorbox{darkseagreen}{Demo 5.4}:  Incorporate in the model \textcolor{mauvetaupe}{time-weighted network statistics}.
 
 \emph{Time-weighted statistics prioritize recent data points, assigning greater higher weights to more recent observations, typically through an exponentially decaying weight parameter. The higher the value of the decay parameter, the greater the emphasis on recent transactions. In contrast, a lower alpha value gives more weight to historical data and provides a longer-term perspective.}
 
@@ -828,138 +880,19 @@ M_TW = gam(one ~
 ```
 
 ```{r}
-# save(M_TW, file="01-Data/02-Gam-Fits/time-weighted-model.RData")
+save(M_TW, file="01-Data/02-Gam-Fits/time-weighted-model.RData")
 summary(M_TW)
 ```
 
-#### 4.3.4. Event-Weighted Network Statistics
+\emph{The network exhibits a persistent hierarchy, characterized by a small subset of actors consistently receiving a disproportionate share of interactions (positive and highly significant in-degree and in-intensity over the long term). These relationships are not driven by immediate reciprocity or short-term exchanges (non-significant reciprocity and short-term effects). Moreover, the absence of significant time-weighted dyadic and extra-dyadic effects indicates that the timing and structure of past interactions do not significantly influence the likelihood of future interactions beyond the general tendency towards certain actors. This suggests that the network structure is primarily shaped by enduring relationships and individual actor characteristics, rather than complex temporal dependencies or broader network influences. The stability of these patterns over time further underscores the importance of sustained, potentially asymmetric relationships in this network.}
 
-\colorbox{pastelpurple}{Supplementary 2}: Inspect \textcolor{mauvetaupe}{event-weighted network statistics} and further model formulations. 
+#### 4.3.3. Model Comparison
 
-\emph{The relationships between nodes are often represented as simple connections without considering the varying strength or importance of these interactions. Event-weighted network statistics address this limitation by incorporating the magnitude or frequency of events into the analysis.}
-
-\emph{In the context of interbank transactions, the event weight is typically the amount transacted. This means that larger transactions contribute more to the network statistics than smaller ones, providing a more nuanced view of the interbank market.}
-
-##### Why event-weighted statistics matter
-
-\emph{By considering transaction amounts, event-weighted statistics provide a richer understanding of the interbank market. They allow us to identify:}
-
--   __Key players__:\emph{ Banks with large transaction volumes or significant mutual exchange relationships.}
--   __Dominant flows__: \emph{The direction and magnitude of net fund flows between banks.}
-
-\emph{For our interbank network, we focus on three types of dyadic (pairwise) event-weighted statistics, all computed considering the amounts of repeated and reciprocated transactions.}
-
--   __Repeated Transaction Amount__: \emph{The total amount transacted between two banks over a given period. This captures the overall volume of business between the banks.}
-
--   __Reciprocated Transaction Amount__: \emph{The total amount exchanged in both directions between two banks over a given period. This measures the degree of mutual exchange and interdependence.}
-
-##### Event-weighted reciprocity statistics
-
-\emph{Let us consider reciprocity as an illustrative case. The same scheme is applied to repeated transactions (\_Trt\_ as a short form for trust)}
-
--   __WeightReciprocityEdgeStatistic (EdWeiRec)__: \emph{This statistic calculates the total amount of money a borrower has sent back to a lender in all their past interactions. It provides a measure of the borrower's overall repayment obligation fulfilled towards the lender.}
--   __NormalizedWeightReciprocityEdgeStatistic (EdNORWeiRec)__: \emph{This statistic builds upon EdWeiRec by incorporating normalization. It calculates the average amount of money a borrower has sent back per reciprocal interaction in the past, providing a more nuanced view of reciprocity compared to just the total sum.}
--   __EventWeightReciprocityEdgeStatistic (EdRecEvtWei)__ \emph{This statistic considers both the frequency of reciprocal transactions and the weight of the current transaction, i.e., its amount}
--   __EventWeightNormalizedWeightReciprocityEdgeStatistic (EdNORWeiRecEvtWei)__: \emph{This statistic considers both the frequency of past interactions (reflected in the average amount) and the significance of the current transaction relative to the average size of past reciprocal transactions.}
-
-###### M_EW1
-
-\emph{Beyond regular network statistics for repetition and reciprocity, this model specification includes EdWeiTrt and EdWeiRec statistics.}
-
-\emph{Let us focus on reciprocity as an illustrative case. While} _EdRec_ \emph{calculates the raw count of transaction events initiated by the borrower and directed towards the lender,} _EdWeiRec_ \emph{Calculates the total amount of money involved in transactions initiated by the borrower and directed towards the lender.}
-
-\emph{This statistic goes beyond the raw count and considers the total monetary value flowing in the reciprocal direction. A high value suggests a significant financial exchange from the borrower to the lender.}
+\colorbox{darkseagreen}{D5.5}: Compare the two models above using AIC or BIC. 
 
 ```{r}
-M_EW1 = gam(one ~  
-              ## OUT-DEGREE + OUT-ACTIVITY + IN-DEGREE + IN-ACTIVITY
-              RecOutDeg + RecNROutAct + RecInDeg + RecNRInAct +
-              ## NODE BALANCE
-              RecNetBal +
-              ## TIME FROM LAST EVENT
-              RecLastTime +
-              ## ASSORTATIVITY BY DEGREE AND BY INTENSITY
-              SdrOutDeg_RecInDeg + SdrNROutAct_RecNRInAct +
-              ## REPETITION AND RECIPROCITY
-              # EdTrt + EdTrtEvtWei + EdRec + EdRecEvtWei +
-              EdTrt + EdWeiTrt + EdRec + EdWeiRec +
-              ## DYADIC BALANCE
-              EdBalDif + 
-              ## TRANSITIVE CLOSURE + CYCLIC CLOSURE + SHARED BORROWERS + SHARED LENDERS
-              EdTran + EdClos + EdShrBors + EdShrLens -1,
-
-            family = "binomial", 
-            data = dat.gam)
-
-summary(M_EW1)
-```
-
-###### M_EW2
-
-\emph{This model specification includes EdNORWeiTrt and EdNORWeiRec statistics.}
-
-_EdNORWeiRec_ \emph{calculates the average amount of money exchanged per transaction initiated by the borrower and directed towards the lender.}
-
-\emph{This statistic provides a more nuanced view of the reciprocity by considering the average transaction size. A high value suggests frequent interactions with a significant average amount flowing from the borrower to the lender.}
-
-```{r}
-M_EW2 = gam(one ~
-              ## OUT-DEGREE + OUT-ACTIVITY + IN-DEGREE + IN-ACTIVITY
-              RecOutDeg + RecNROutAct + RecInDeg + RecNRInAct +
-              ## NODE BALANCE
-              RecNetBal +
-              ## TIME FROM LAST EVENT
-              RecLastTime +
-              ## ASSORTATIVITY BY DEGREE AND BY INTENSITY
-              SdrOutDeg_RecInDeg + SdrNROutAct_RecNRInAct +
-              ## REPETITION AND RECIPROCITY
-              EdTrt + EdNORWeiTrt + EdRec + EdNORWeiRec + 
-              ## DYADIC BALANCE
-              EdBalDif + 
-              ## TRANSITIVE CLOSURE + CYCLIC CLOSURE + SHARED BORROWERS + SHARED LENDERS
-              EdTran + EdClos + EdShrBors + EdShrLens -1,              
-            family = "binomial", 
-            data = dat.gam)
-
-summary(M_EW2)
-```
-
-###### M_EW3
-
-\emph{This model specification includes EdTrtEvtWei and EdRecEvtWei statistics.}
-
-\emph{EdRecEvtWei calculates a combined weight for reciprocity by multiplying:}
-
--   \emph{the number of transactions initiated by the borrower and directed towards the lender and}
--   \emph{the amount of the current transaction}
-
-\emph{This statistic considers both the frequency of reciprocal interactions (number of transactions) and the significance of the current transaction (its amount). A high value suggests frequent reciprocal interactions with a high-value current transaction.}
-
-```{r}
-M_EW3 = gam(one ~
-              ## OUT-DEGREE + OUT-ACTIVITY + IN-DEGREE + IN-ACTIVITY
-              RecOutDeg + RecNROutAct + RecInDeg + RecNRInAct +
-              ## NODE BALANCE
-              RecNetBal +
-              ## TIME FROM LAST EVENT
-              RecLastTime +
-              ## ASSORTATIVITY BY DEGREE AND BY INTENSITY
-              SdrOutDeg_RecInDeg + SdrNROutAct_RecNRInAct +
-              ## REPETITION AND RECIPROCITY
-              EdTrt + EdTrtEvtWei + EdRec + EdRecEvtWei + 
-              ## DYADIC BALANCE
-              EdBalDif + 
-              ## TRANSITIVE CLOSURE + CYCLIC CLOSURE + SHARED BORROWERS + SHARED LENDERS
-              EdTran + EdClos + EdShrBors + EdShrLens -1,              
-
-            family = "binomial", 
-            data = dat.gam)
-
-summary(M_EW3)
-```
-
-```{r}
-# save(M_EW1, M_EW2, M_EW3, file="01-Data/02-Gam-Fits/event-weighted-model.RData")
+AIC(M, M_TW)
+BIC(M, M_TW)
 ```
 
 ```{r}
