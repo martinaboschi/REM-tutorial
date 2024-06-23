@@ -255,6 +255,7 @@ Load the Data:
 ```{r}
 load(file = "00-Data/re_data.RData")
 head(simdat)
+head(non.data)
 ```
 
 Based on previous examples we will focus on the data-driven definition of transitivity. 

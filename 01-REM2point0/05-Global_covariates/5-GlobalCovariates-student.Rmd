@@ -19,7 +19,7 @@ Download the data and load the data in memory.
 
 
 ```{r cars}
-load("00-Data/mnf-raw.RData")
+load("mnf-raw.RData")
 n<-nrow(mnf.raw)
 ```
 
@@ -28,7 +28,7 @@ n<-nrow(mnf.raw)
 Consider the data and make a histogram of the time of day and day of the week. Draw some conclusions whether both terms are important to be included for an analysis of the email interactions in this context. 
 
 ```{r}
-#Use the function hist with an appropriate number of breaks to visualize when interactions
+#Use the function hist with an appropriate number of breaks to visualize when interactions 
 #tend to take place
 ```
 
@@ -43,17 +43,13 @@ Lembo et al. (2024) show that large shifts, i.e., small $\mu$, are most informat
 Select a shift distribution Exp($\mu$) such that not more than 1\% of the events do not have associated non-events. 
 
 ```{r}
-# Simulate shift with as a mean roughly the event time horizon 
+# Simulate shift with as a mean roughly the event time horizon (270 days)
 p<-159
-# Choose mean shift m
-m <- 1 # YOUR CHOICE (don't choose 1! it is bad)
-tau<-rexp(p^2,1/m)
+tau<-rexp(p^2,1/270)
 dgnl<-(0:(p-1))*p+(1:p)
 tau[dgnl]<-NA
 tms.shift<-mnf.raw$tms + tau[mnf.raw$s+(mnf.raw$r-1)*p]
 T<-max(mnf.raw$tms)
-
-# How many events do not have a matching non-event
 sum(sapply(tms.shift, function(tm,tau){sum((tm>tau)&(tm<(tau+T)),na.rm = TRUE)==0},tau=tau))
 ```
 
@@ -64,9 +60,8 @@ On the shifted process, sample for each (shifted) events a non-event at the same
 ```{r}
 resample <- function(x, ...) x[sample.int(length(x), ...)]
 event.ids<-mnf.raw$s+(mnf.raw$r-1)*p
-non.event.ids<-apply(cbind(tms.shift,event.ids),1,
-function(x,tau){resample(setdiff((1:length(tau))[(x[1]>tau)&(x[1]<(tau+T))],c(NA,x[2])))[1]},
-tau=tau)
+non.event.ids<-apply(cbind(tms.shift,event.ids),1,function(x,tau)
+{resample(setdiff((1:length(tau))[(x[1]>tau)&(x[1]<(tau+T))],c(NA,x[2])))[1]},tau=tau)
 ```
 
 ### Exercise 1.5. Create covariates
@@ -113,7 +108,6 @@ plot(mnf1.rem)
 Add additional covariates to the model. 
 
 ```{r}
-# Extend the previous model with additional covariates, such as the Day of the Week and the Baseline
-# hazard. It is also possible to include random sender/receiver effects and perhaps repetition and 
-# reciprocity variables. 
+# Extend the previous model with additional covariates, such as the Day of the Week and 
+#the Baseline hazard. 
 ```
