@@ -1,7 +1,7 @@
 ---
 title: "Global Covariates (Student)"
 author: "Bianchi, Boschi, Filippi-Mazzola, Juozaitiene, Wit"
-date: "`r Sys.Date()`"
+date: "24-06-2024"
 output: pdf_document
 ---
 
@@ -19,7 +19,7 @@ Download the data and load the data in memory.
 
 
 ```{r cars}
-load("mnf-raw.RData")
+load("00-Data/mnf-raw.RData")
 n<-nrow(mnf.raw)
 ```
 

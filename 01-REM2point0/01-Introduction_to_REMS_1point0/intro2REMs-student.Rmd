@@ -201,7 +201,7 @@ class$rev<-cbind(class$rev,non.events)
 The question we want to answer is to what extend do the interactions between the individuals depend on their gender $x^{(1)}$, race $x^{(2)}$ and their role in the classroom $x^{(3)}$. Even with these three convariates, there are a number of effects that could be plausible. For example, with the effect of gender:
 
   + **Sender.** Either boys or girls could be more often the initiator of an interaction. This corresponds to a sender gender effect $x_s^{(1)}$.
-  + **Receiver.** Either boys or girls could be more on the receiving end of a interaction. This corresponds to a receiver gender effect $x_r^{(1)}$.
+  + **Receiver.** Either boys or girls could be more on the receiving end of a interaction. This corresponds to a reiver gender effect $x_r^{(1)}$.
   + **Homophily.** Interactions may be more common between the same genders (or not). This corresponds to an homophily effect, $h_{sr}^{(1)}=1_{\{x_s^{(1)}=x_r^{(1)}\}}$.
 
 Focusing just on gender, we consider the log-linear hazard formulation,
@@ -227,17 +227,13 @@ This can be done as follows.
 
 ```{r}
 sender.gender <- class$info$male[class$rev$sender] - class$info$male[class$rev$non.sender] 
-
 receiver.gender <- class$info$male[class$rev$receiver] - class$info$male[class$rev$non.receiver] 
-
-same.gender <- (class$info$male[class$rev$sender] == class$info$male[class$rev$receiver]) - 
-  (class$info$male[class$rev$non.sender] == class$info$male[class$rev$non.receiver]) 
+same.gender <- (class$info$male[class$rev$sender] == class$info$male[class$rev$receiver]) -        (class$info$male[class$rev$non.sender] == class$info$male[class$rev$non.receiver]) 
 
 class$rev <- cbind(class$rev,sender.gender,receiver.gender,same.gender)
 ```
 
 Now you add the code for the other two covariates.
-
 ```{r}
 # Define sender.race, receiver.race, same.race, sender.teacher, receiver.teacher
 ```
@@ -250,8 +246,7 @@ Graphical maximizing of the sampled partial likelihood is not possible anymore a
 library(mgcv)
 one<-rep(1,n)
 class$rev<- cbind(class$rev,one)
-class1.glm <- gam(one~-1+sender.gender+receiver.gender+same.gender, family = binomial, 
-                  data=class$rev)
+class1.glm <- gam(one~-1+sender.gender+receiver.gender+same.gender, family = binomial, data=class$rev)
 summary(class1.glm)
 ```
 We interpret the output as follows: 

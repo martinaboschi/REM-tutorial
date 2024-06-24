@@ -106,7 +106,7 @@ head(FR[,c("LifeForm", "Taxon",
 \colorbox{darkseagreen}{D1.4}: Inspect the object `native`. A species' \textcolor{cerulean}{native range} (NR) is the collection of areas where it is indigenous. How would you relate this concept to that of \textcolor{mauvetaupe}{risk set}?
 
 ```{r}
-head(native)
+native[sample(1:nrow(native), 10),c("species", "region")]
 ```
 
 \colorbox{darkseagreen}{D1.5}: Inspect the object `first_records`. Describe this relational event network and identify why it can be considered a subset of the previous one. 
@@ -155,7 +155,7 @@ invaded.regions <- function(sp.n, r.n, y, native, first_records){
 
 \colorbox{darkseagreen}{Demo 2}: 
 
-\colorbox{darkseagreen}{D2.1}: Consider the smaller \textcolor{mauvetaupe}{relational event network} described by the data in `first_records`. Begin by defining the \textcolor{mauvetaupe}{sender set} and storing it in `spec`, followed by defining the \textcolor{mauvetaupe}{receiver set} and storing it in `reg.lf`.
+\colorbox{darkseagreen}{D2.1}: Consider the smaller \textcolor{mauvetaupe}{relational event network} descripted by the data in `first_records`. Begin by defining the \textcolor{mauvetaupe}{sender set} and storing it in `spec`, followed by defining the \textcolor{mauvetaupe}{receiver set} and storing it in `reg.lf`.
 
 ```{r}
 # Define sender set - species
@@ -646,6 +646,22 @@ sort(re.species)[1:5]
 load("01-Data/01-Inputs/input04.RData")
 ```
 
+```{r}
+unit <- rep(1, nrow(dat.gam))
+stp = dat.gam$year
+X = cbind(dat.gam$d1,dat.gam$d2)
+I = cbind(unit,-unit)		
+```
+
+```{r}
+gam_complete <- gam(y ~ dt + 
+                      s(stp, by=tr) +
+                      s(X, by=I) +
+                      s(sp, by=I, bs="re") - 1,
+    family="binomial"(link = 'logit'),
+    method="REML", data=dat.gam)
+```
+
 #### Model Selection
 
 ```{r}
@@ -671,22 +687,26 @@ AIC(gam_d.only)
 AIC(gam_sp.only)
 ```
 
+```{r}
+AIC(gam_complete)
+```
+
 #### Changes in random effect predictions
 
 ```{r}
-# sort(re.species, decreasing = TRUE)[1:5]
-# sort(re.species)[1:5]
+sort(re.species, decreasing = TRUE)[1:5]
+sort(re.species)[1:5]
 ```
 
 ```{r}
-# re.species_complete <- coefficients(gam_complete)[21:length(coefficients(gam_complete))]
-# names(re.species_complete) <- levels(sp)
-# sort(re.species_complete, decreasing = TRUE)[1:5]
-# sort(re.species_complete)[1:5]
+re.species_complete <- coefficients(gam_complete)[21:length(coefficients(gam_complete))]
+names(re.species_complete) <- levels(sp)
+sort(re.species_complete, decreasing = TRUE)[1:5]
+sort(re.species_complete)[1:5]
 ```
 
 ```{r}
-# sort(re.species)[1:3]
-# sort(re.species_complete)[1:3]
+sort(re.species)[1:3]
+sort(re.species_complete)[1:3]
 ```
 
